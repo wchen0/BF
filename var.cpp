@@ -6,6 +6,7 @@ int8_t pool[3000];
 int cur_data_ptr = 0;
 int cur_var_num = 0;
 
+// the element in if-flag-stack cannot be reached by user
 std::stack<var*> if_flag_stack;
 
 // var index starts from 1
@@ -21,24 +22,22 @@ var::var(const int8_t d) {
     pool_index = cur_var_num + 1;
     cur_var_num++;
 
-    printf("++++++++");
-    // pool[0] = 8;
+    int inner_increment = 0;
 
-    int inner_increment = data / 8;
-    putchar('[');
-    print_times('>', pool_index);
-    print_times('+', inner_increment);
-    print_times('<', pool_index);
-    putchar('-');
-    putchar(']');
-
+    if (d > 8) {
+        printf("++++++++");
+        inner_increment = data / 8;
+        putchar('[');
+        print_times('>', pool_index);
+        print_times('+', inner_increment);
+        print_times('<', pool_index);
+        putchar('-');
+        putchar(']');
+    }
     print_times('>', pool_index);
     int outer_increment = data - inner_increment * 8;
     print_times('+', outer_increment);
     print_times('<', pool_index);
-    // pool[0] = 0;
-    // cur_data_ptr = 0;
-    // the data pointer: #0
 }
 
 var::var(var& another) {
@@ -74,10 +73,12 @@ void var::input() {
 }
 
 void test_output(int index) {
+    assert(0);
     printf("test output: %c\n", pool[index]);
 }
 
 void var::test_output() {
+    assert(0);
     printf("test output: %c\n", pool[pool_index]);
 }
 
@@ -89,26 +90,58 @@ void var::output_ascii() {
     cur_var_num--;
 }
 
-void var::decrement(int d) {
-    // this can be optimized
+void var::decrement(const uint8_t d) {
     print_times('<', cur_data_ptr);
     cur_data_ptr = 0;
 
+    int inner_decrement = 0;
+    if (d > 8) {
+        inner_decrement = d / 8;
+        print_times('+', 8);
+        putchar('[');
+        print_times('>', pool_index);
+        print_times('-', inner_decrement);
+        print_times('<', pool_index);
+        putchar('-');
+        putchar(']');
+    }
+
+    int outer_decrement = d - inner_decrement * 8;
     print_times('>', pool_index);
-    print_times('-', d);
+    print_times('-', outer_decrement);
     print_times('<', pool_index);
     pool[pool_index] -= d;
 }
 
-void var::increment(int d) {
-    // this can be optimized
+void var::operator-= (const uint8_t d) {
+    decrement(d);
+}
+
+void var::increment(const uint8_t d) {
     print_times('<', cur_data_ptr);
     cur_data_ptr = 0;
 
+    int inner_increment = 0;
+    if (d > 8) {
+        inner_increment = d / 8;
+        print_times('+', 8);
+        putchar('[');
+        print_times('>', pool_index);
+        print_times('+', inner_increment);
+        print_times('<', pool_index);
+        putchar('-');
+        putchar(']');
+    }
+
+    int outer_increment = d - inner_increment * 8;
     print_times('>', pool_index);
-    print_times('+', d);
+    print_times('+', outer_increment);
     print_times('<', pool_index);
     pool[pool_index] += d;
+}
+
+void var::operator+= (const uint8_t d) {
+    increment(d);
 }
 
 void var::while_begin() {
@@ -240,6 +273,17 @@ void var::if_begin() {
     flag->clear();
 }
 
+void var::if_begin_zero() {
+    // execute when *this is non-zero
+    var* flag = new var(*this);     // *flag is a copy of *this
+    flag->flip();
+    if_flag_stack.emplace(flag);
+    // enter while-loop when *flag is zero
+    flag->while_begin();
+    // make sure only execute once
+    flag->clear();
+}
+
 void var::if_end() {
     assert(!if_flag_stack.empty());
 
@@ -313,6 +357,45 @@ void var::greater(var& another, var& result) {
     cur_var_num -= 3;
 }
 
+void var::greater(const uint8_t d, var& result) {
+    var D(d);
+    greater(D, result);
+    D.clear();
+    cur_var_num--;
+}
+
+void var::greater_eq(var& another, var& result) {
+    var t;
+    greater(another, t);
+
+    var r(t);
+    r.flip();
+    r.if_begin();   // if t == 0
+    equal(another, t);
+    r.if_end();
+    result.copy(t);
+
+    r.clear();
+    t.clear();
+    cur_var_num--;
+}
+
+void var::greater_eq(const uint8_t d, var& result) {
+    var t;
+    greater(d, t);
+
+    var r(t);
+    r.flip();
+    r.if_begin();   // if t == 0
+    equal(d, t);
+    r.if_end();
+    result.copy(t);
+
+    r.clear();
+    t.clear();
+    cur_var_num--;
+}
+
 void var::equal(var& another, var& ret) {
     var ret1;
     var ret2;
@@ -333,6 +416,13 @@ void var::equal(var& another, var& ret) {
     ret1.clear();
     ret2.clear();
     cur_var_num -= 2;
+}
+
+void var::equal(const uint8_t d, var& ret) {
+    var D(d);
+    equal(D, ret);
+    D.clear();
+    cur_var_num--;
 }
 
 void var::add(var& another, var& ret) {
@@ -371,6 +461,21 @@ void var::multiply(var& another, var& ret) {
     cur_var_num -= 2;
 }
 
+void var::operator*= (const uint8_t d) {
+    var tmp;
+    var t(*this);
+    var s;
+    for (int i = 0; i < d; i++) {
+        s.add(t, tmp);      // tmp <- s + t
+        s.copy(tmp);        // s <- tmp
+    }
+    copy(s);
+    s.clear();
+    t.clear();
+    tmp.clear();
+    cur_var_num -= 3;
+}
+
 void var::divide(var& another, var& ret) {
     // substract `another` until tmp is no greater than `another`
     // *this and `another` are considered as unsigned int (8 bits)
@@ -392,6 +497,26 @@ void var::divide(var& another, var& ret) {
 
     ttt.clear();
     tmp.clear();
+    cur_var_num -= 3;
+}
+
+void var::operator/= (const uint8_t d) {
+    var rest(*this);
+    var flag;
+    var cnt;
+
+    rest.greater_eq(d, flag);
+    flag.while_begin();     // while rest >= d
+    cnt += 1;
+    rest -= d;
+    rest.greater_eq(d, flag);
+    flag.while_end();
+
+    copy(cnt);
+
+    cnt.clear();
+    rest.clear();
+    flag.clear();
     cur_var_num -= 3;
 }
 
