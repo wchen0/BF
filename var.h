@@ -39,9 +39,13 @@ public:
 
     void output_ascii();
 
-    void increment(int d = 1);
+    void increment(const uint8_t d = 1);
 
-    void decrement(int d = 1);
+    void operator+= (const uint8_t d);
+
+    void decrement(const uint8_t d = 1);
+
+    void operator-= (const uint8_t d);
 
     void while_begin();
 
@@ -57,6 +61,8 @@ public:
 
     void if_begin();
 
+    void if_begin_zero();
+
     void if_end();
 
     void to_bool();
@@ -67,7 +73,15 @@ public:
 
     void greater(var& another, var& result);
 
+    void greater(const uint8_t d, var& result);
+
+    void greater_eq(var& another, var& result);
+
+    void greater_eq(const uint8_t d, var& result);
+
     void equal(var& another, var& ret);
+
+    void equal(const uint8_t d, var& ret);
 
     void add(var& another, var& ret);
 
@@ -75,13 +89,20 @@ public:
 
     void multiply(var& another, var& ret);
 
+    void operator*= (const uint8_t d);
+
     void divide(var& another, var& ret);
+
+    void operator/= (const uint8_t d);
 
     void swap(var& another);
 };
 
+
 void test_output(int index = cur_data_ptr);
 
 void optimize(FILE*, FILE*);
+
+
 
 #endif
