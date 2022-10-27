@@ -53,11 +53,15 @@ public:
 
     void copy(var& another);
 
+    var& operator=(var& another);
+
     void move_to(var& another);
 
     void clear();
 
     void set(const uint8_t v);
+
+    var& operator=(const uint8_t v);
 
     void if_begin();
 
@@ -73,9 +77,17 @@ public:
 
     void greater(var& another, var& result);
 
+    var& operator>(var& another);
+
+    var& operator>(const uint8_t d);
+
     void greater(const uint8_t d, var& result);
 
     void greater_eq(var& another, var& result);
+
+    var& operator>=(var& another);
+
+    var& operator>=(const uint8_t d);
 
     void greater_eq(const uint8_t d, var& result);
 
@@ -83,15 +95,39 @@ public:
 
     void equal(const uint8_t d, var& ret);
 
+    var& operator==(var& another);
+
+    var& operator==(const int8_t d);
+
+    var& operator!=(var& another);
+
+    var& operator!=(const int8_t d);
+
     void add(var& another, var& ret);
+
+    var& operator+(var& another);
+
+    var& operator+(const uint8_t d);
 
     void minus(var& another, var& ret);
 
+    var& operator-(var& another);
+
+    var& operator-(const uint8_t d);
+
     void multiply(var& another, var& ret);
+
+    var& operator*(var& another);
+
+    var& operator*(const int8_t d);
 
     void operator*= (const uint8_t d);
 
     void divide(var& another, var& ret);
+
+    var& operator/(var& another);
+
+    var& operator/(const int8_t d);
 
     void operator/= (const uint8_t d);
 
