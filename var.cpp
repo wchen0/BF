@@ -46,7 +46,7 @@ var::var(var& another) {
     pool[cur_var_num + 1] = another.data;
     pool_index = cur_var_num + 1;
     cur_var_num++;
-    this->copy(another);
+    copy(another);
 }
 
 // output the value in this unit
@@ -207,10 +207,19 @@ void var::copy(var& another) {
     printf("]");
     print_times('<', another.pool_index);
 
-    tmp.move_to(another);
+    tmp.move_to(another);   // move back
     tmp.clear();
-    cur_var_num--;      // do not keep `tmp`
+    cur_var_num--;          // do not keep `tmp`
     // tmp is the last one in pool
+}
+
+var& var::operator=(var& another) {
+    // return an reference - this won't create a new object
+    // *this <- anther
+    // *this doesn't become an reference of another, so pool_index is not copied
+    // only copy the value
+    copy(another);
+    return *this;
 }
 
 void var::clear() {
@@ -225,18 +234,19 @@ void var::clear() {
 
 void var::set(const uint8_t v) {
     clear();
-
     print_times('<', cur_data_ptr);
-    printf("++++++++");     // pool[0] = 8;
-
-    int inner_increment = v / 8;
-    putchar('[');
-    print_times('>', pool_index);
-    print_times('+', inner_increment);
-    print_times('<', pool_index);
-    putchar('-');
-    putchar(']');
-
+    int inner_increment = 0;
+    
+    if (v > 8) {
+        printf("++++++++");     // pool[0] = 8;
+        inner_increment = v / 8;
+        putchar('[');
+        print_times('>', pool_index);
+        print_times('+', inner_increment);
+        print_times('<', pool_index);
+        putchar('-');
+        putchar(']');
+    }
     print_times('>', pool_index);
     int outer_increment = v - inner_increment * 8;
     print_times('+', outer_increment);
@@ -244,6 +254,11 @@ void var::set(const uint8_t v) {
     // pool[0] = 0;
     // cur_data_ptr = 0;
     // current data pointer: #0
+}
+
+var& var::operator=(const uint8_t v) {
+    set(v);
+    return *this;
 }
 
 void var::to_bool() {
@@ -357,11 +372,23 @@ void var::greater(var& another, var& result) {
     cur_var_num -= 3;
 }
 
+var& var::operator>(var& another) {
+    var* p = new var;
+    greater(another, *p);
+    return *p;
+}
+
 void var::greater(const uint8_t d, var& result) {
     var D(d);
     greater(D, result);
     D.clear();
     cur_var_num--;
+}
+
+var& var::operator>(const uint8_t d) {
+    var* p = new var;
+    greater(d, *p);
+    return *p;
 }
 
 void var::greater_eq(var& another, var& result) {
@@ -396,6 +423,18 @@ void var::greater_eq(const uint8_t d, var& result) {
     cur_var_num--;
 }
 
+var& var::operator>=(var& another) {
+    var* p = new var;
+    greater_eq(another, *p);
+    return *p;
+}
+
+var& var::operator>=(const uint8_t d) {
+    var* p = new var;
+    greater_eq(d, *p);
+    return *p;
+}
+
 void var::equal(var& another, var& ret) {
     var ret1;
     var ret2;
@@ -425,6 +464,32 @@ void var::equal(const uint8_t d, var& ret) {
     cur_var_num--;
 }
 
+var& var::operator==(var& another) {
+    var* p = new var;
+    equal(another, *p);
+    return *p;
+}
+
+var& var::operator==(const int8_t d) {
+    var* p = new var;
+    equal(d, *p);
+    return *p;
+}
+
+var& var::operator!=(var& another) {
+    var* p = new var;
+    equal(another, *p);
+    p->flip();
+    return *p;
+}
+
+var& var::operator!=(const int8_t d) {
+    var* p = new var;
+    equal(d, *p);
+    p->flip();
+    return *p;
+}
+
 void var::add(var& another, var& ret) {
     var tmp(another);
     ret.copy(*this);
@@ -435,6 +500,22 @@ void var::add(var& another, var& ret) {
     ret.increment();
     tmp.while_end();
     cur_var_num--;
+}
+
+var& var::operator+(var& another) {
+    var* tmp = new var;
+    add(another, *tmp);
+    // when using a = b + c;
+    // a call a.copy(*tmp) and only copy the value
+    // variable *tmp won't never be destroyed and released from the pool
+    // this should be optimized
+    return *tmp;
+}
+
+var& var::operator+(const uint8_t d) {
+    var* p = new var(*this);    // *p is a copy of *this
+    *p += d;                     // *p <- *this + d
+    return *p;
 }
 
 void var::minus(var& another, var& ret) {
@@ -449,6 +530,22 @@ void var::minus(var& another, var& ret) {
     cur_var_num--;
 }
 
+var& var::operator-(var& another) {
+    var* tmp = new var;
+    minus(another, *tmp);
+    // when using a = b + c;
+    // a call a.copy(*tmp) and only copy the value
+    // variable *tmp won't never be destroyed and released from the pool
+    // this should be optimized
+    return *tmp;
+}
+
+var& var::operator-(const uint8_t d) {
+    var* p = new var(*this);    // *p is a copy of *this
+    *p -= d;                     // *p <- *this + d
+    return *p;
+}
+
 void var::multiply(var& another, var& ret) {
     var tmp(another);
     var tt(*this);
@@ -459,6 +556,18 @@ void var::multiply(var& another, var& ret) {
     tmp.while_end();
     tt.clear();
     cur_var_num -= 2;
+}
+
+var& var::operator*(var& another) {
+    var* p = new var;
+    multiply(another, *p);
+    return *p;
+}
+
+var& var::operator*(const int8_t d) {
+    var* p = new var(*this);
+    *p *= d;
+    return *p;
 }
 
 void var::operator*= (const uint8_t d) {
@@ -498,6 +607,18 @@ void var::divide(var& another, var& ret) {
     ttt.clear();
     tmp.clear();
     cur_var_num -= 3;
+}
+
+var& var::operator/(var& another) {
+    var* p = new var;
+    divide(another, *p);
+    return *p;
+}
+
+var& var::operator/(const int8_t d) {
+    var* p = new var(*this);
+    *p /= d;
+    return *p;
 }
 
 void var::operator/= (const uint8_t d) {
@@ -558,3 +679,4 @@ void optimize(FILE* fin, FILE* fout) {
     fclose(fout);
     // discard the '<' and '>' at the end
 }
+
