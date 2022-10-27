@@ -1,22 +1,22 @@
 ## 如何生成 Brainf\*ck 程序
 此项目地址为：<a href="https://github.com/wchen0/BF/">仓库地址</a><br>
-其中 `var.h var.cpp` 是生成 BF 的库。此项目提供了生成 Brainf\*ck 程序的简单方法。       
+其中 `var.h var.cpp` 是生成 BF 的库。此项目提供了生成 Brainfuck 程序的简单方法。       
 `compiler.cpp` 是一个简易的 BF 编译器。      
 <a href="https://rextester.com/l/brainfuck_online_compiler">网址</a>是一个比较好的 BF 在线编译器。         
 
 已经实现：
 
-- while(!x) 语句
-- if(!x) 和 if(x) 语句
-- 整型 +、-、\*、/
+- `while(!x)` 语句
+- `if(!x)` 和 `if(x)` 语句
+- 整型 `+`、`-`、`*`、`/`
 - 整型大小比较及其他基本操作
-- 部分运算符重载，**部分功能尚未实现**
+- 运算符重载
 - ~~数组~~，**尚未实现**，不能通过变量访问数组
 
 ## 关于 Brainf\*ck
-从维基百科上截取如下内容。
+**<a href="https://w20chen.github.io/2022/10/22/brain/">上一篇文章</a>对 Brainfuck 有一些简单的介绍，但并不充分。**这里从维基百科上截取了如下内容。简而言之，BF 就是仅使用 8 种字符，描述程序的一种语言。它和高级语言相去甚远，近于机器级语言，但访问内存又异常地麻烦。     
 <h4><span class="mw-headline" id="Commands">Commands</span><span class="mw-editsection"><span class="mw-editsection-bracket"></span></span></h4>
-<p>The eight language commands each consist of a single character:
+<p>The 8 language commands each consist of 1 single character:
 </p>
 <table class="wikitable">
 <tbody><tr>
@@ -65,6 +65,8 @@
 <td>If the byte at the data pointer is nonzero, then instead of moving the instruction pointer forward to the next command, jump it <i>back</i> to the command after the <i>matching</i> <code>[</code> command.
 </td></tr></tbody></table>
 
+Brainfuck 需要机器有两个"探头"：一个是 pc，另一个是 data pointer。pc 总是指向下一条执行的指令，pc 对于编程的人是不可见的；data pointer 是读写内存的探头，编程时需要被挪到合适的地址。     
+
 <table class="wikitable">
 <tbody><tr>
 <th style="text-align:center;">brainfuck command
@@ -108,9 +110,36 @@
 <td><code class="mw-highlight mw-highlight-lang-c mw-content-ltr" dir="ltr"><span class="p">}</span><span class="w"></span></code>
 </td></tr></tbody></table>
 
->BF 在硬件上的结构非常简单，这也是它的代码异常复杂的一个原因。
+>BF 计算机的硬件实现非常简单，这也是它的代码异常复杂的一个原因。
 
-## 如何使用（如何按照我的需求，生成BF程序）
+初始，所有内存单元均为 0，若要让 #2 为 2，#3 为 5，则 Brainfuck 代码为：
+```
+>>++>+++++
+```
+此时 data pointer 指向 #3，若要清零 #2，应当接着写：
+```
+<[-]
+```
+然后，若要将 #4 置为 35，可以这么写：
+```
+>[>+++++++<-]
+```
+这将会使 #4 为 35，但 #3 被清零。（想想为什么？）      
+ascii 35 为 `'#'`，我们输出 #4 将会得到 `'#'`，整个程序如下：
+```
+>>++>+++++      #2 == 2; #3 == 5
+<[-]            #2 == 0
+>[>+++++++<-]   #3 == 35
+>               move the data pointer to #4
+.               output #4
+```
+你可以去<a href = "https://rextester.com/l/brainfuck_online_compiler">在线编译</a>或使用 `compiler.cpp` 进行验证。     
+你一定已经发现，人工编写 Brainfuck 代码是费力的，那么如何自动的生成 Brainfuck 代码呢？       
+
+## 如何使用
+
+>如何根据你的需求，生成对应的 Brainfuck 程序？
+
 #### 调用 var.h 生成 BF 代码
 在 `main.cpp` 的 `main` 函数中调用 `var.h` 提供的接口，即可在 `out.bf` 中生成对应的 `bf` 代码。      
 `optimize` 函数是对 `tmp.bf` 的优化，它删除冗余的 `<`,`>` 记号，生成 `out.bf`。
@@ -159,7 +188,7 @@ ret.output_ascii();
 ```
 
 **以上代码描述的 BF 代码如下：**
-```c
+```py
 ++++++++[>++++++<-]>+++++>,>>[-]<<[->>+>+<<<]>>>[-<<<+>>>][-][-]<<<<[-
 >>>>+>+<<<<<]>>>>>[-<<<<<+>>>>>][-]<<<[-]>[>>[-]<[->+>+<<]>>[-<<+>>][-
 ]+>[-]<<[->>+>+<<<]>>>[-<<<+>>>][-]<[[-]<<[-]>[-]>]>[-]<<[->>+>+<<<]>>
@@ -194,8 +223,8 @@ val.input();
 
 val.greater_eq('0', flag);      // flag = (val >= '0');
 flag.if_begin();                // if(flag == true)
-val.greater('9', flag);         // flag = (val > '9);
-flag.flip();                    // flag = !flag
+    val.greater('9', flag);     // flag = (val > '9);
+    flag.flip();                // flag = !flag
 flag.if_end();
 flag.output_ascii();
 ```
@@ -216,7 +245,7 @@ x.while_begin();
 x.while_end();
 ```
 **以上代码描述的 BF 代码如下：**
-```c
+```cmd
 ++++++++[>>++++++<<-]>>+++++<,<++++++++[>------<-]>[->.<]
 ```
 
@@ -245,6 +274,59 @@ x += 3;                 // 已经重载
 x.output_ascii();
 ```
 
+#### 运算符重载
+注意：调用运算符函数的同时会创建**不可被 Brainfuck 回收的中间变量**     
+等号
+```cpp
+var v0, v1('1'), v2, v3;
+v2 = v0 = v1;
+v0.output();        // '1'
+v2.output();        // '1'
+(v3 = v2) += 2;     // v3 <- v2; v3 += 2;
+v2.output();        // '1'
+v3.output();        // '3'
+```
+加号
+```cpp
+var v0, v1(5), v2(20);
+v0 = 4;
+v1 = v0 + v2 + 7 + v0;  // v1 == 35
+v1.output();            // print '#'
+```
+减号
+```cpp
+var v0 = 45, v1(5), v2(100);
+v1 = v0 - v2 / 20 - (v2 - 75) / v1;
+v1.output();            // print '#'
+```
+乘号
+```cpp
+var v0, v1(5), v2(4);
+v0 = 4;
+v1 = v0 * 2 + v2 * v1 + 7;
+v1.output();            // print '#'
+```
+除号
+```cpp
+var v0, v1(5), v2(100);
+v0 = 40;
+v1 = v0 / v1 + v2 / 5 + 7;
+v1.output();            // print '#'
+```
+`>`和`>=`
+```cpp
+var v0 = 4, v1 = 2, v2 = 9, v3 = 9;
+var result[6]={v0>v1,v2>=v3,v1>v3,v1>=v0,v1>=v3,v0>=v1};
+for (var& v : result) v.output_ascii();
+// 110001
+```
+`==`和`!=`
+```cpp
+var v0 = 4, v1 = 2, v2 = 9, v3 = 9;
+var result[7]={v0==4,v2==9,v1!=v3,v2==v3,v2!=v3,v0!=4,v1!=1};
+for (var& v : result) v.output_ascii();
+// 1111001
+```
 
 #### 字符打印
 方法1：
@@ -256,7 +338,7 @@ v4.output();v5.output();v6.output();v4.output();
 v7.output();v3.output();v8.output();
 ```
 **BF 程序如下：**
-```
+```cpp
 ++++++++[>+++++++++++++<-]++++++++[>>++++++++++++<<-]
 >>+++++<<++++++++[>>>+++++++++++++<<<-]>>>++++<<<++++
 ++++[>>>>+++++++++++++<<<<-]>>>>+++++++<<<<++++++++[>
@@ -301,13 +383,113 @@ for (int i = 0; i < 10; i++) {
 }
 ```
 
-BF 代码很长，这里不展示。
+该冒泡排序算法对应的 BF 代码很长，这里不展示。
+
+#### 打印数字字符画
+<a href="/documents/ascii_art.bf">BF 代码</a>     
+输入一个数字，生成对应字符画。      
+```cpp
+var a[15], flag, n, endl('\n');
+n.input();
+n -= '0';
+for (int i = 0; i < 15; i++) {
+    a[i].set(' ');
+}
+
+n.equal(0, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 4 || i == 7 || i == 10) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(1, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 1 || i == 4 || i == 7 || i == 10 || i == 13) {
+            a[i].set('#');
+        }
+    }
+flag.if_end();
+
+n.equal(2, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 3 || i == 4 || i == 10 || i == 11) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(3, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 3 || i == 4 || i == 10 || i == 9) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(4, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 1 || i == 4 || i == 10 || i == 9 || i == 13 || i == 12) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(5, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 5 || i == 4 || i == 10 || i == 9) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(6, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 5 || i == 4 || i == 10) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(7, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 7 || i == 4 || i == 10 || i == 9 || i == 13 || i == 12) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(8, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 4 || i == 10) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+n.equal(9, flag);
+flag.if_begin();
+    for (int i = 0; i < 15; i++) {
+        if (i == 4 || i == 10 || i == 9) continue;
+        a[i].set('#');
+    }
+flag.if_end();
+
+for (int i = 0; i < 15; i++) {
+    a[i].output(); a[i].output();
+    if (i % 3 == 2) endl.output();
+}
+```
 
 ## 结语
 由于时间有限，写得比较粗糙。      
-最终的效果并不完美。极端情况下，BF 代码过于冗长，但此程序可以保证 BF 代码的正确性。     
+最终的效果并不完美。极端情况下，BF 代码过于冗长，但此程序可以保证 BF 代码的正确性。      
+虽然 BF 代码比较长，占据篇幅较大的是 `<` 和 `>`，但这并不代表 BF 程序需要很多内存，**内存通常不会超限**。     
 若要实现一个 BF 程序，比如高级的排序算法，还是有难度的，需要再封装一些数据结构。      
-由于部分的重载运算符函数会增加额外的中间变量，故暂时没有实现（把所有对象都理解为引用，是一个更好的新思路）。     
+~~由于部分的重载运算符函数会增加额外的中间变量，故暂时没有实现（把所有对象都理解为引用，是一个更好的新思路，或许有更好的实现）。~~     
+已经实现运算符重载，但是对于内存管理，没有优化：调用运算符函数的同时会创建**不可被 Brainfuck 回收的中间变量**，这在一定程度上使得生成代码变得冗长。
 
 
 2022-10-24
