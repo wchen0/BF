@@ -1,18 +1,21 @@
 #ifndef _var
 #define _var
 
+#define MEMSIZE 30000
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
 #include <assert.h>
 #include <cstdio>
 #include <cstdint>
+#include <string>
+#include <cstring>
 #include <stack>
 #include <vector>
 
 class var;
 
-extern int8_t pool[3000];
+extern int8_t pool[MEMSIZE];
 extern int cur_data_ptr;
 extern int cur_var_num;
 extern std::stack<var*> if_flag_stack;
@@ -37,7 +40,7 @@ public:
 
     void test_output();
 
-    void output_ascii();
+    void output_as_char();
 
     void increment(const uint8_t d = 1);
 
@@ -87,6 +90,14 @@ public:
 
     var& operator>=(var& another);
 
+    var& operator<(const uint8_t d);
+
+    var& operator<(var& another);
+
+    var& operator<=(var& another);
+
+    var& operator<=(const uint8_t d);
+
     var& operator>=(const uint8_t d);
 
     void greater_eq(const uint8_t d, var& result);
@@ -132,13 +143,32 @@ public:
     void operator/= (const uint8_t d);
 
     void swap(var& another);
+
+    void input_as_integer();
+
+    void output_as_integer();
+
+    var& operator&&(var& another);
+
+    var& operator||(var& another);
+
+    var& operator!();
+
+    var& operator%(var& another);
+
+    var& operator%(const uint8_t d);
+
 };
 
+void if_end();
 
 void test_output(int index = cur_data_ptr);
 
 void optimize(FILE*, FILE*);
 
+void print_str(const char* str);
+
+void mem_reset();
 
 
 #endif
