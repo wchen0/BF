@@ -2,12 +2,15 @@
 
 #define print_times(ch,times) for(int i=0;i<(times);i++){putchar(ch);}
 
-int8_t pool[3000];
+
+int8_t pool[MEMSIZE];
 int cur_data_ptr = 0;
 int cur_var_num = 0;
 
+
 // the element in if-flag-stack cannot be reached by user
 std::stack<var*> if_flag_stack;
+
 
 // var index starts from 1
 // pool[0] is a helper unit
@@ -24,7 +27,7 @@ var::var(const int8_t d) {
 
     int inner_increment = 0;
 
-    if (d > 8) {
+    if (d > 8 && pool_index <= 16) {    // pool_index <= 16 : do not take too long to reach #0
         printf("++++++++");
         inner_increment = data / 8;
         putchar('[');
@@ -34,6 +37,7 @@ var::var(const int8_t d) {
         putchar('-');
         putchar(']');
     }
+    
     print_times('>', pool_index);
     int outer_increment = data - inner_increment * 8;
     print_times('+', outer_increment);
@@ -67,6 +71,7 @@ void var::input() {
     cur_data_ptr = 0;
 
     print_times('>', pool_index);
+    // printf("[-]");
     putchar(',');
     print_times('<', pool_index);
     // pool[pool_index] = getchar();
@@ -82,11 +87,17 @@ void var::test_output() {
     printf("test output: %c\n", pool[pool_index]);
 }
 
-void var::output_ascii() {
+void var::output_as_char() {
     var tmp(*this);
     tmp.increment('0');
-    tmp.output();
-    tmp.clear();
+    // tmp.output();
+    // tmp.clear();
+    // cur_var_num--;
+
+    // merge `output` and `clear`
+    print_times('>', tmp.pool_index);
+    printf(".[-]");
+    print_times('<', tmp.pool_index);
     cur_var_num--;
 }
 
@@ -95,7 +106,7 @@ void var::decrement(const uint8_t d) {
     cur_data_ptr = 0;
 
     int inner_decrement = 0;
-    if (d > 8) {
+    if (d > 8 && pool_index <= 16) {
         inner_decrement = d / 8;
         print_times('+', 8);
         putchar('[');
@@ -113,7 +124,7 @@ void var::decrement(const uint8_t d) {
     pool[pool_index] -= d;
 }
 
-void var::operator-= (const uint8_t d) {
+void var::operator-=(const uint8_t d) {
     decrement(d);
 }
 
@@ -122,7 +133,7 @@ void var::increment(const uint8_t d) {
     cur_data_ptr = 0;
 
     int inner_increment = 0;
-    if (d > 8) {
+    if (d > 8 && pool_index <= 16) {    // ool_index <= 16 : do not take too long to reach #0
         inner_increment = d / 8;
         print_times('+', 8);
         putchar('[');
@@ -140,7 +151,7 @@ void var::increment(const uint8_t d) {
     pool[pool_index] += d;
 }
 
-void var::operator+= (const uint8_t d) {
+void var::operator+=(const uint8_t d) {
     increment(d);
 }
 
@@ -153,8 +164,8 @@ void var::while_begin() {
     print_times('<', pool_index);
 }
 
-// if pc never enters the loop, it's still correct
 void var::while_end() {
+    // if pc never enters the loop, it's still correct
     print_times('<', cur_data_ptr);
     cur_data_ptr = 0;
 
@@ -208,15 +219,15 @@ void var::copy(var& another) {
     print_times('<', another.pool_index);
 
     tmp.move_to(another);   // move back
-    tmp.clear();
-    cur_var_num--;          // do not keep `tmp`
+    // tmp.clear();
+    cur_var_num--;
     // tmp is the last one in pool
 }
 
 var& var::operator=(var& another) {
     // return an reference - this won't create a new object
     // *this <- anther
-    // *this doesn't become an reference of another, so pool_index is not copied
+    // *this doesn't become an reference of another, so `pool_index` is not copied
     // only copy the value
     copy(another);
     return *this;
@@ -234,11 +245,13 @@ void var::clear() {
 
 void var::set(const uint8_t v) {
     clear();
+    if (v == 0) return;
+
     print_times('<', cur_data_ptr);
     int inner_increment = 0;
     
-    if (v > 8) {
-        printf("++++++++");     // pool[0] = 8;
+    if (v > 8 && pool_index <= 16) {    // pool_index <= 16 : do not take too long to reach #0
+        printf("++++++++");             // pool[0] = 8;
         inner_increment = v / 8;
         putchar('[');
         print_times('>', pool_index);
@@ -272,25 +285,28 @@ void var::to_bool() {
     tmp.if_begin();
     clear();
     tmp.if_end();
-
+    
     tmp.clear();
-    cur_var_num--;
+    cur_var_num -= 3;
+    // destroy tmp ans 2 if-flags
 }
 
 void var::if_begin() {
     // execute when *this is non-zero
-    var* flag = new var(*this);     // *flag is a copy of *this
-
+    var* flag = new var(*this);     
+    // *flag is a copy of *this
     if_flag_stack.emplace(flag);
     // enter while-loop when *flag is non-zero
     flag->while_begin();
     // make sure only execute once
     flag->clear();
+    // if-flag cannot be accessed by user because it is in stack
 }
 
 void var::if_begin_zero() {
     // execute when *this is non-zero
-    var* flag = new var(*this);     // *flag is a copy of *this
+    var* flag = new var(*this);
+    // *flag is a copy of *this
     flag->flip();
     if_flag_stack.emplace(flag);
     // enter while-loop when *flag is zero
@@ -301,7 +317,6 @@ void var::if_begin_zero() {
 
 void var::if_end() {
     assert(!if_flag_stack.empty());
-
     var* flag = if_flag_stack.top();
     if_flag_stack.pop();
     
@@ -309,7 +324,16 @@ void var::if_end() {
     
     delete flag;
     // flag cannot be easily released in pool
-    // for the reason that *flag may not be the last unit
+    // (although destroyed in C++)
+    // for the reason that *flag may not be at the last unit
+}
+
+void if_end() {
+    assert(!if_flag_stack.empty());
+    var* flag = if_flag_stack.top();
+    if_flag_stack.pop();
+    flag->while_end();
+    delete flag;
 }
 
 void var::flip() {
@@ -326,8 +350,9 @@ void var::flip() {
     tmp.if_end();
 
     // release tmp from the pool
+    // and 2 if-flags
     tmp.clear();
-    cur_var_num--;
+    cur_var_num -= 3;
 }
 
 void var::is_negative(var& result) {
@@ -337,6 +362,7 @@ void var::is_negative(var& result) {
     greater(tmp, result);
     // if (uint8_t)*this is greater than 0x7f,
     // then *this is negative as an unsigned
+    
     tmp.clear();
     cur_var_num--;
 }
@@ -347,9 +373,7 @@ void var::greater(var& another, var& result) {
     // return true if (uint8_t)*this > (uint8_t)another
     // assert(this->data >= 0 && another.data >= 0);
     // consider both as unsigned interger, although not always as such
-    var tmp1(*this);
-    var tmp2(another);
-    var tmp3;
+    var tmp1(*this), tmp2(another), tmp3;
     result.clear();
 
     tmp1.while_begin();
@@ -365,11 +389,13 @@ void var::greater(var& another, var& result) {
 
     tmp1.while_end();
 
-    // delete tmp1, tmp2, tmp3 from the pool
+    // destroy tmp1, tmp2, tmp3 from the pool
+    // and an if-flag
+    // is this buggy?
     tmp1.clear();
     tmp2.clear();
     tmp3.clear();
-    cur_var_num -= 3;
+    cur_var_num -= 4;
 }
 
 var& var::operator>(var& another) {
@@ -397,14 +423,14 @@ void var::greater_eq(var& another, var& result) {
 
     var r(t);
     r.flip();
-    r.if_begin();   // if t == 0
+    r.if_begin();       // if *this <= another
     equal(another, t);
     r.if_end();
     result.copy(t);
 
     r.clear();
     t.clear();
-    cur_var_num--;
+    cur_var_num -= 3;   // also destroy if-flag
 }
 
 void var::greater_eq(const uint8_t d, var& result) {
@@ -413,19 +439,26 @@ void var::greater_eq(const uint8_t d, var& result) {
 
     var r(t);
     r.flip();
-    r.if_begin();   // if t == 0
+    r.if_begin();       // if *this <= d
     equal(d, t);
     r.if_end();
     result.copy(t);
 
     r.clear();
     t.clear();
-    cur_var_num--;
+    cur_var_num -= 3;
 }
 
 var& var::operator>=(var& another) {
     var* p = new var;
     greater_eq(another, *p);
+    return *p;
+}
+
+var& var::operator<(const uint8_t d) {
+    var* p = new var;
+    greater_eq(d, *p);
+    p->flip();
     return *p;
 }
 
@@ -436,25 +469,25 @@ var& var::operator>=(const uint8_t d) {
 }
 
 void var::equal(var& another, var& ret) {
-    var ret1;
-    var ret2;
-    this->greater(another, ret1);
+    var ret1, ret2;
+    greater(another, ret1);
     another.greater(*this, ret2);
 
     ret1.flip();
     ret2.flip();
     ret.clear();
 
-    ret1.if_begin();    // when ret1 == 0 && ret2 == 0
+    ret1.if_begin();    // if ret1 == 0 && ret2 == 0
     ret2.if_begin();
     ret.set(1);
     ret2.if_end();
     ret1.if_end();
 
-    // delete ret1, ret2 from the pool
+    // destroy ret1, ret2 from the pool
+    // and 2 if-flags
     ret1.clear();
     ret2.clear();
-    cur_var_num -= 2;
+    cur_var_num -= 4;
 }
 
 void var::equal(const uint8_t d, var& ret) {
@@ -493,8 +526,7 @@ var& var::operator!=(const int8_t d) {
 void var::add(var& another, var& ret) {
     var tmp(another);
     ret.copy(*this);
-    // tmp is an copy of `another`
-     
+    
     tmp.while_begin();
     tmp.decrement();
     ret.increment();
@@ -505,15 +537,15 @@ void var::add(var& another, var& ret) {
 var& var::operator+(var& another) {
     var* tmp = new var;
     add(another, *tmp);
-    // when using a = b + c;
-    // a call a.copy(*tmp) and only copy the value
-    // variable *tmp won't never be destroyed and released from the pool
-    // this should be optimized
+    // when using a = b + c,
+    // a call a.copy(*tmp) and only copy the value.
+    // *tmp won't be destroyed from the pool
+    // this should have been optimized
     return *tmp;
 }
 
 var& var::operator+(const uint8_t d) {
-    var* p = new var(*this);    // *p is a copy of *this
+    var* p = new var(*this);     // *p is a copy of *this
     *p += d;                     // *p <- *this + d
     return *p;
 }
@@ -533,16 +565,16 @@ void var::minus(var& another, var& ret) {
 var& var::operator-(var& another) {
     var* tmp = new var;
     minus(another, *tmp);
-    // when using a = b + c;
-    // a call a.copy(*tmp) and only copy the value
-    // variable *tmp won't never be destroyed and released from the pool
-    // this should be optimized
+    // when using a = b + c,
+    // a call a.copy(*tmp) and only copy the value.
+    // *tmp won't be destroyed from the pool
+    // this should have been optimized
     return *tmp;
 }
 
 var& var::operator-(const uint8_t d) {
     var* p = new var(*this);    // *p is a copy of *this
-    *p -= d;                     // *p <- *this + d
+    *p -= d;                    // *p <- *this + d
     return *p;
 }
 
@@ -680,3 +712,165 @@ void optimize(FILE* fin, FILE* fout) {
     // discard the '<' and '>' at the end
 }
 
+void print_str(const char* str) {
+    size_t l = strlen(str);
+    int start_index = cur_var_num + 1;
+    int end_index = cur_var_num + l;
+
+    var* arr = new var[l];
+    for (int i = 0; str[i]; i++) {
+        arr[i] = str[i];
+    }
+    print_times('>', start_index);
+    for (int i = start_index; i < end_index; i++) {
+        printf(".>");
+    }
+    printf(".");
+
+    for (int i = end_index; i > start_index; i--) {
+        printf("[-]<");
+    }
+    printf("[-]");
+    print_times('<', start_index);
+    delete[] arr;
+    cur_var_num -= l;
+}
+
+var& var::operator<=(const uint8_t d) {
+    var* p = new var;
+    greater(d, *p);
+    p->flip();
+    return *p;
+}
+
+var& var::operator<(var& another) {
+    var* p = new var;
+    greater_eq(another, *p);
+    p->flip();
+    return *p;
+}
+
+var& var::operator<=(var& another) {
+    var* p = new var;
+    greater(another, *p);
+    p->flip();
+    return *p;
+}
+
+var& var::operator!() {
+    var* p = new var;
+    *p = *this;
+    p->flip();
+    return *p;
+}
+
+var& var::operator&&(var& another) {
+    return !(!*this || !another);
+}
+
+var& var::operator||(var& another) {
+    var* p = new var;
+    var& r1 = (*this != 0);
+    var& r2 = (another != 0);
+    
+    r1.if_begin();
+    *p = 1;
+    if_end();
+    
+    r2.if_begin();
+    *p = 1;
+    if_end();
+
+    r1.clear();
+    r2.clear();
+    cur_var_num -= 4;   
+    // destroy r1, r2 and 2 if-flags
+    delete& r1;
+    delete& r2;
+    return *p;
+}
+
+
+void var::input_as_integer() {
+    int old_var_num = cur_var_num;
+    clear();
+
+    var tmp, loop = 1;
+    tmp.input();
+
+    loop.while_begin();         // (tmp == ' ').while_begin() is prohibited!
+    (tmp < '0' || tmp > '9').if_begin();
+    // eat all ' ', '\n', '\t' before the number
+    tmp.input();
+    if_end();
+    // else
+    (tmp >= '0' && tmp <= '9').if_begin();
+    loop = 0;   // break
+    if_end();
+    loop.while_end();
+
+    loop = 1;
+    loop.while_begin();
+    (tmp >= '0' && tmp <= '9').if_begin();
+    *this = *this * 10 + tmp - '0';
+    tmp.input();
+    if_end();
+    // else
+    (tmp < '0' || tmp > '9').if_begin();
+    loop = 0;   // break
+    if_end();
+    loop.while_end();
+    
+    // destory all rubbish
+    print_times('>', old_var_num + 1);
+    for (int i = old_var_num + 1; i <= cur_var_num; i++) {
+        printf("[-]>");
+    }
+    print_times('<', cur_var_num + 1);
+    cur_var_num = old_var_num;
+}
+
+var& var::operator%(var& another) {
+    return *this - (*this / another) * another;
+}
+
+var& var::operator%(const uint8_t d) {
+    return *this - (*this / d) * d;
+}
+
+void var::output_as_integer() {
+    int old_var_num = cur_var_num;
+
+    var& v2 = *this / 100;
+    v2.if_begin();
+    v2.output_as_char();
+    if_end();
+
+    var& v1 = (*this / 10) % 10;
+    (v1 || v2).if_begin();
+    v1.output_as_char();
+    if_end();
+
+    var& v0 = *this % 10;
+    v0.output_as_char();
+
+    // destroy in C++
+    delete& v2;
+    delete& v1;
+    delete& v0;
+
+    // destory all rubbish in bf
+    print_times('>', old_var_num + 1);
+    for (int i = old_var_num + 1; i <= cur_var_num; i++) {
+        printf("[-]>");
+    }
+    print_times('<', cur_var_num + 1);
+    cur_var_num = old_var_num;
+}
+
+void mem_reset() {
+    print_times('>', cur_var_num);
+    for (int i = cur_var_num; i > 0; i--) {
+        printf("[-]>");
+    }
+}
